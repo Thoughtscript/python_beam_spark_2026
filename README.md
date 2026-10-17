@@ -25,7 +25,7 @@ Gotcha's:
     The worker failure confirms Spark needs a full SPARK_HOME, not just the Job Server’s .jar. I’ll unpack the matching Spark 2.4.8 distribution in each Spark service image and use its standard launcher so worker-launched executors can find Spark’s build files.
     ```
 1. Keep the versions aligned: `Beam 2.45.0` (including its Python SDK harness), `Spark 2.4.8`, and `Java 8`. Spark's `Hadoop 2.7` distribution and `Jackson 2.14.1` JARs are used by both Spark Images and are seemingly required for correct serialization.
-    * In particular, Ensure that the various Spark version align (here, are identical) since Java conflicts can creep up.
+    * In particular, ensure that the various Spark version align (here, are identical) since Java conflicts can creep up.
     * This was the most time-consuming issues encountered by AI.
 1. The Spark cluster will create multiple temporary Containers during processing.
     * These are expected and are Beam-created temporary Harness Containers.
@@ -36,6 +36,8 @@ Gotcha's:
         * https://jaehyeon.me/blog/2024-03-28-beam-local-dev-1/
         * https://beam.apache.org/documentation/runtime/environments/
         * https://github.com/cometta/python-apache-beam-spark/blob/master/deployment.yaml
+
+> [Screenshot](./Screenshot%202026-10-16%20at%209.23.02 PM.png) is included since the initialization and execution of all pipeline steps is usefully detailed and time-consuming to reproduce.
  
 ## Resources and Links
 
