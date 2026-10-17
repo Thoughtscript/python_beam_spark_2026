@@ -9,12 +9,16 @@ from apache_beam.metrics import Metrics, MetricsFilter
 from apache_beam.options.pipeline_options import PipelineOptions
 from apache_beam.runners.runner import PipelineState
 
-NUM_EVENTS = 1_000_000
+NUM_STREAMS = 10
+EVENTS_PER_STREAM = 1_000_000
+NUM_EVENTS = NUM_STREAMS * EVENTS_PER_STREAM
+EVENTS_PER_BATCH = 1_000
 LOG_PROGRESS_EVERY = 100_000
 PROGRESS_INTERVAL_SECONDS = 10
 EVENT_TYPES = ("click", "view", "purchase", "login")
 EVENT_SCHEMA = {
     "event_id": "string",
+    "stream_id": "integer",
     "user_id": "string",
     "type": "click | view | purchase | login",
     "amount": "float (1-1200)",
@@ -29,36 +33,59 @@ LOGGER = logging.getLogger(__name__)
 
 
 class GenerateEvent(beam.DoFn):
-    def __init__(self):
+    def __init__(self, num_events=NUM_EVENTS, events_per_batch=EVENTS_PER_BATCH):
         self.event_types = EVENT_TYPES
         self.log_progress_every = LOG_PROGRESS_EVERY
-        self.num_events = NUM_EVENTS
+        self.num_events = num_events
+        self.events_per_batch = events_per_batch
         self.generated_events = Metrics.counter(
             METRICS_NAMESPACE, "events_generated"
         )
 
-    def process(self, index):
+    def process(self, stream_batch):
         import json
         import logging
 
-        event = {
-            "event_id": f"evt_{index}",
-            "user_id": f"user_{(index * 73 + 19) % 500 + 1}",
-            "type": self.event_types[
-                (index * 3 + index // 7) % len(self.event_types)
-            ],
-            "amount": round(1 + (index * 7919 % 119_900) / 100, 2),
-            "failed_logins": (index * 13 + index // 11) % 6,
-            "new_device": (index * 17 + 5) % 2 == 0,
-        }
-        self.generated_events.inc()
-        if index % self.log_progress_every == 0:
-            logging.getLogger(__name__).info(
-                "Event generation progress: created %s of %s events.",
-                f"{index + 1:,}",
-                f"{self.num_events:,}",
-            )
-        yield json.dumps(event)
+        stream_index, batch_index = stream_batch
+        first_index = batch_index * self.events_per_batch
+        batch_end = min(first_index + self.events_per_batch, self.num_events)
+        batch_count = (
+            self.num_events + self.events_per_batch - 1
+        ) // self.events_per_batch
+        logger = logging.getLogger(__name__)
+        logger.info(
+            "Generating stream %s batch %s/%s: %s events (evt_%s through "
+            "evt_%s).",
+            f"{stream_index + 1:,}",
+            f"{batch_index + 1:,}",
+            f"{batch_count:,}",
+            f"{batch_end - first_index:,}",
+            f"{stream_index * self.num_events + first_index:,}",
+            f"{stream_index * self.num_events + batch_end - 1:,}",
+        )
+        for index in range(first_index, batch_end):
+            event_index = stream_index * self.num_events + index
+            event = {
+                "event_id": f"evt_{event_index}",
+                "stream_id": stream_index,
+                "user_id": f"user_{(event_index * 73 + 19) % 500 + 1}",
+                "type": self.event_types[
+                    (event_index * 3 + event_index // 7) % len(self.event_types)
+                ],
+                "amount": round(1 + (event_index * 7919 % 119_900) / 100, 2),
+                "failed_logins": (event_index * 13 + event_index // 11) % 6,
+                "new_device": (event_index * 17 + 5) % 2 == 0,
+            }
+            self.generated_events.inc()
+            if (index + 1) % self.log_progress_every == 0:
+                logger.info(
+                    "Event generation progress: stream %s created %s of "
+                    "%s events.",
+                    f"{stream_index + 1:,}",
+                    f"{index + 1:,}",
+                    f"{self.num_events:,}",
+                )
+            yield json.dumps(event)
 
 
 class ModelInference(beam.DoFn):
@@ -165,15 +192,34 @@ def run_pipeline():
 
     started_at = time.monotonic()
     LOGGER.info(
-        "Pipeline steps: create %s event indices; generate events; "
-        "run fake risk-model inference; count prediction labels.",
+        "Pipeline steps: create %s event streams with batches of up to %s "
+        "events each; continuously generate events, infer risk predictions, "
+        "and count prediction labels.",
+        f"{NUM_STREAMS:,}",
+        f"{EVENTS_PER_BATCH:,}",
+    )
+    LOGGER.info(
+        "The bounded demonstration streams %s events through inference "
+        "across all %s streams.",
         f"{NUM_EVENTS:,}",
+        f"{NUM_STREAMS:,}",
     )
     pipeline = beam.Pipeline(options=options)
     predictions = (
         pipeline
-        | "Create event indices" >> beam.Create(range(NUM_EVENTS))
-        | "Generate fake events" >> beam.ParDo(GenerateEvent())
+        | "Create batches for each event stream"
+        >> beam.Create(
+            [
+                (stream_index, batch_index)
+                for stream_index in range(NUM_STREAMS)
+                for batch_index in range(
+                    (EVENTS_PER_STREAM + EVENTS_PER_BATCH - 1)
+                    // EVENTS_PER_BATCH
+                )
+            ]
+        )
+        | "Generate fake events"
+        >> beam.ParDo(GenerateEvent(num_events=EVENTS_PER_STREAM))
         | "Run fake risk model" >> beam.ParDo(ModelInference())
     )
     predictions | "Count prediction labels" >> beam.combiners.Count.PerElement()

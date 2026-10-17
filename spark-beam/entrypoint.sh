@@ -1,6 +1,8 @@
 #!/bin/sh
 set -eu
 
+python3 -m unittest discover -s /app/tests -v
+
 java -cp "/opt/apache/beam/jars/*" org.apache.beam.runners.spark.SparkJobServerDriver "$@" &
 job_server_pid=$!
 python3 /app/src/spark_example.py &

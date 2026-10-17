@@ -10,6 +10,7 @@ USER root
 COPY --from=beam-python /usr/local /usr/local
 WORKDIR /app
 COPY spark-beam/src/spark_example.py ./src/spark_example.py
+COPY spark-beam/tests ./tests
 COPY spark-beam/entrypoint.sh /usr/local/bin/spark-beam-entrypoint
 
 RUN chmod +x /usr/local/bin/spark-beam-entrypoint
