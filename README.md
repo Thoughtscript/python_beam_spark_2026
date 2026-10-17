@@ -2,7 +2,7 @@
 
 [![](https://img.shields.io/badge/Apache%20Beam-2.45.0-orange.svg)](https://github.com/apache/beam/releases/tag/v2.45.0) [![](https://img.shields.io/badge/Apache%20Spark-2.4.8-E25A1C.svg)](https://archive.apache.org/dist/spark/spark-2.4.8/) [![](https://img.shields.io/badge/Python-3.10-yellow.svg)](https://hub.docker.com/layers/apache/beam_python3.10_sdk/2.45.0/images/) [![](https://img.shields.io/badge/Java-8-blue.svg)](https://hub.docker.com/_/eclipse-temurin)
 
-Experiments with continuous event streaming with uninterruptible Model Inferencing using Python, Apache Beam, and Spark.
+Experiments with continuous event streaming and uninterruptible Model Inferencing using Python, Apache Beam, and Spark.
 
 > AI first development demo to learn about the GCP Machine Learning Pro.
 
@@ -26,7 +26,7 @@ Gotcha's:
     ```
 1. Keep the versions aligned: `Beam 2.45.0` (including its Python SDK harness), `Spark 2.4.8`, and `Java 8`. Spark's `Hadoop 2.7` distribution and `Jackson 2.14.1` JARs are used by both Spark Images and are seemingly required for correct serialization.
     * In particular, ensure that the various Spark version align (here, are identical) since Java conflicts can creep up.
-    * This was the most time-consuming issues encountered by AI.
+    * This was the most time-consuming issue encountered by AI.
 1. The Spark cluster will create multiple temporary Containers during processing.
     * These are expected and are Beam-created temporary Harness Containers.
 1. After some hand holding I got AI to correctly configure the Spark Cluster itself:
