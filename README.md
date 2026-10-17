@@ -12,6 +12,12 @@ This is a small but important sub-topic (a technique that comes up in the test m
 
 ## Summary
 
+This was the first time I’d looked closely at Beam (came up in a practice PMLE test question). 
+
+To scaffold and build a quasi-realistic real-world example leveraging my GCP, existing Machine Learning, and Python experience using AI took about 3 hours (maybe 2.5) from start to finish including some documentation review and blog skimming.
+
+> AI stalled out (Container orchestration with AI within AI can lead to stall outs that are unusual in more limited scenarios).
+
 ## Docker Compose Services
 
 Gotcha's:
