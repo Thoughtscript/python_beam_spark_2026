@@ -16,7 +16,6 @@ This is a small but important sub-topic (a technique that comes up in the test m
 
 Gotcha's:
 1. Apache Beam with Spark is awkward to configure within a single Docker container (and not realistic).
-1. Ensure that the various Spark version align (here, are identical) since Java conflicts can creep up.
 1. Google's AI argued with me for a while about whether the full Spark `.jars` are really present through Python (I knew they weren't) and GitHub CoPilot confirmed my suspicions:
     ```
     ... the worker can’t launch an executor because the Job Server image contains Spark’s jars without a full Spark distribution. I’ll add the Spark runtime files executors need and verify a job can launch.
@@ -26,6 +25,8 @@ Gotcha's:
     The worker failure confirms Spark needs a full SPARK_HOME, not just the Job Server’s .jar. I’ll unpack the matching Spark 2.4.8 distribution in each Spark service image and use its standard launcher so worker-launched executors can find Spark’s build files.
     ```
 1. Keep the versions aligned: `Beam 2.45.0` (including its Python SDK harness), `Spark 2.4.8`, and `Java 8`. Spark's `Hadoop 2.7` distribution and `Jackson 2.14.1` JARs are used by both Spark Images and are seemingly required for correct serialization.
+    * In particular, Ensure that the various Spark version align (here, are identical) since Java conflicts can creep up.
+    * This was the most time-consuming issues encountered by AI.
 1. The Spark cluster will create multiple temporary Containers during processing.
     * These are expected and are Beam-created temporary Harness Containers.
 1. After some hand holding I got AI to correctly configure the Spark Cluster itself:
